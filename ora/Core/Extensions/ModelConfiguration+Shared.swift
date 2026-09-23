@@ -17,6 +17,13 @@ extension ModelConfiguration {
 
     /// Creates a ModelContainer using the standard Ora database configuration
     static func createOraContainer(isPrivate: Bool = false) throws -> ModelContainer {
+        // SwiftData does not create missing parent folders, so a first launch would fail without this.
+        if !isPrivate {
+            try FileManager.default.createDirectory(
+                at: URL.applicationSupportDirectory.appending(path: "Ora"),
+                withIntermediateDirectories: true
+            )
+        }
         return try ModelContainer(
             for: TabContainer.self, History.self, Download.self,
             configurations: oraDatabase(isPrivate: isPrivate)

@@ -44,6 +44,14 @@ jobs:
       - name: Allow UI automation without a password prompt
         run: sudo automationmodetool enable-automationmode-without-authentication || true
 
+      - name: Keep the session awake and unlocked
+        # UI tests need an unlocked GUI session. The first run ended at the lock screen.
+        run: |
+          sudo pmset -a displaysleep 0 sleep 0 disksleep 0 || true
+          defaults -currentHost write com.apple.screensaver idleTime 0 || true
+          defaults write com.apple.screensaver askForPassword -int 0 || true
+          nohup caffeinate -dimsu >/dev/null 2>&1 &
+
       - name: Build and test
         env:
           ORA_AGENT_STAGE: ${{ inputs.stage }}

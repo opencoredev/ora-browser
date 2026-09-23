@@ -205,6 +205,9 @@ run_unit() {
 
 run_ui() {
     start_fixture_server || return 1
+    # Shows whether the GUI session was locked before the tests started.
+    mkdir -p "$EVIDENCE/screenshots"
+    screencapture -x "$EVIDENCE/screenshots/session-before-ui.png" 2>/dev/null || true
     echo "==> Running UI tests"
     local filter=()
     [[ -n "$UI_ONLY_TESTING" ]] && filter=("-only-testing:$UI_ONLY_TESTING")
