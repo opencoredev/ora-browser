@@ -32,14 +32,14 @@ Each run bills macOS runner minutes. Do not dispatch in a loop without changing 
    ```
 
    Useful flags: `--runner tenki-macos-15-medium` for macOS 15 with Xcode 16, `--repo OWNER/REPO`, and `--run-id ID` to re-download evidence without a new run. A new dispatch on the same branch cancels the previous run.
-3. Read `build/agent-test/runs/<run-id>/summary.md`, then open every PNG in `screenshots/` with the image reader. A passing test proves only what it asserts. Look at the screenshots yourself.
+3. Read `build/agent-test/runs/<run-id>/summary.md`, then look at every image in `screenshots/`. Xcode 26 exports attachments as `.heic` stills and `.mp4` screen recordings; convert them first (for example `ffmpeg -i in.heic out.png`, or `ffmpeg -ss 5 -i in.mp4 -frames:v 1 out.png` for a frame) and open the PNGs with the image reader. A passing test proves only what it asserts. Look at the screenshots yourself.
 4. On failure, read the matching log before changing code (see Evidence). `gh run view <run-id> --log-failed` shows setup failures that happen before the evidence exists.
 
 Run `scripts/agent-test/run.sh` directly only on a disposable macOS machine. It takes the same settings through `ORA_AGENT_*` environment variables, documented at the top of the script.
 
 ## What a run does
 
-`run.sh` generates the project with XcodeGen and runs `build-for-testing` without signing, for the schemes the stage needs (`ora` for unit, `ora-ui` for UI, both for `build` and `all`). It then ad-hoc signs `Ora.app` with the real sandbox entitlements, minus the two `com.apple.developer.web-browser*` keys that need Ora's provisioning profile. Next it runs unit tests (`oraTests`) and serves `scripts/agent-test/fixtures/` on `http://127.0.0.1:8765/`. Last, it runs UI tests (`oraUITests`) and exports their screenshot attachments.
+`run.sh` generates the project with XcodeGen and runs `build-for-testing` without signing, for the schemes the stage needs (`ora` for unit, `ora-ui` for UI, both for `build` and `all`). It then ad-hoc signs `Ora.app` with the real sandbox entitlements plus `get-task-allow`, which XCTest needs, minus the two `com.apple.developer.web-browser*` keys that need Ora's provisioning profile. Next it runs unit tests (`oraTests`) and serves `scripts/agent-test/fixtures/` on `http://127.0.0.1:8765/`. Last, it runs UI tests (`oraUITests`) and exports their screenshot attachments.
 
 Because of that signing, runner builds cannot test passkeys, default-browser registration, iCloud Keychain, or Sparkle updates. Say so when a change touches them. The VM starts empty, so every run is a first launch with no Spaces, history, or saved state.
 
@@ -54,7 +54,7 @@ Everything lands in `build/agent-test/runs/<run-id>/`, which is gitignored:
 | `build-ora.log`, `build-ora-ui.log` | Full compiler output |
 | `unit-tests.log`, `unit-tests.json`, `unit-summary.json` | Unit test output and per-test results |
 | `ui-tests.log`, `ui-tests.json`, `ui-summary.json` | UI test output and per-test results |
-| `screenshots/<test>__<name>.png` | Attachments from UI tests, including failure screenshots |
+| `screenshots/<test>__<name>.heic`, `.mp4` | Attachments and screen recordings from UI tests, including failure screenshots |
 | `ui-attachments-export.log` | Why screenshots are missing when the "UI screenshot export" step fails |
 | `ora-unified.log` | Ora's `Logger` output (subsystem `com.orabrowser.ora`) |
 | `crashes/` | Ora crash reports from the run, if any |

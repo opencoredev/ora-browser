@@ -125,15 +125,19 @@ sign() {
 
     # Sign nested code (Sparkle, test bundles) without entitlements first, then the app itself.
     codesign --force --deep --sign - "$APP" || return 1
+    local entitlements="$OUT/ora-agent.entitlements"
     if [[ "$SANDBOX" == "1" ]]; then
         # Keep the real sandbox, but drop the entitlements that require Ora's provisioning profile.
-        local entitlements="$OUT/ora-agent.entitlements"
         cp ora/Info/ora.entitlements "$entitlements"
         /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.web-browser" "$entitlements" 2>/dev/null
         /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.web-browser.public-key-credential" "$entitlements" 2>/dev/null
         sed -i '' "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$BUNDLE_ID/g" "$entitlements"
-        codesign --force --sign - --entitlements "$entitlements" "$APP" || return 1
+    else
+        printf '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict/></plist>\n' >"$entitlements"
     fi
+    # Xcode adds this to Debug builds. XCTest needs it to inject oraTests into the host app.
+    /usr/libexec/PlistBuddy -c "Add :com.apple.security.get-task-allow bool true" "$entitlements" 2>/dev/null
+    codesign --force --sign - --entitlements "$entitlements" "$APP" || return 1
     codesign --display --entitlements - "$APP" >"$EVIDENCE/entitlements.txt" 2>&1
 
     local runner
