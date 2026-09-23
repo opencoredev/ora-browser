@@ -15,6 +15,11 @@ on:
         description: Optional -only-testing filter, e.g. oraUITests/OraSmokeUITests
         type: string
         default: ""
+      sandbox:
+        description: Sign with the app sandbox (1) or without entitlements (0)
+        type: choice
+        options: ["1", "0"]
+        default: "1"
       runner:
         description: macOS runner label
         type: string
@@ -56,6 +61,7 @@ jobs:
         env:
           ORA_AGENT_STAGE: ${{ inputs.stage }}
           ORA_AGENT_UI_ONLY_TESTING: ${{ inputs.ui_only_testing }}
+          ORA_AGENT_SANDBOX: ${{ inputs.sandbox }}
         run: ./scripts/agent-test/run.sh
 
       - name: Upload evidence
