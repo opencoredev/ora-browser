@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import OSLog
 
 // MARK: - Tab Manager
 
@@ -58,6 +59,8 @@ class TabManager: ObservableObject {
     @Query(sort: \TabContainer.lastAccessedAt, order: .reverse) var containers: [TabContainer]
 
     private var cleanupTimer: Timer?
+    private var memoryPressureSource: DispatchSourceMemoryPressure?
+    private let logger = Logger(subsystem: "com.orabrowser.ora", category: "TabSleeping")
     private var recentlyClosedTabs: [ClosedTabSnapshot] = []
     private let maxRecentlyClosedTabs = 5
 
@@ -77,6 +80,12 @@ class TabManager: ObservableObject {
 
         // Start automatic cleanup timer (every minute)
         startCleanupTimer()
+        startMemoryPressureMonitoring()
+    }
+
+    deinit {
+        cleanupTimer?.invalidate()
+        memoryPressureSource?.cancel()
     }
 
     // MARK: - Public API's
@@ -482,17 +491,57 @@ class TabManager: ObservableObject {
 
     /// Clean up old tabs that haven't been accessed recently to preserve memory
     func cleanupOldTabs() {
-        let timeout = SettingsStore.shared.tabAliveTimeout
-        // Skip cleanup if set to "Never" (365 days)
-        guard timeout < 365 * 24 * 60 * 60 else { return }
+        sleepInactiveTabs()
+    }
 
-        let allContainers = fetchContainers()
-        for container in allContainers {
-            for tab in container.tabs {
-                if !tab.isAlive, tab.isWebViewReady, tab.id != activeTab?.id, !tab.isPlayingMedia, tab.type == .normal {
-                    tab.destroyWebView()
-                }
+    func sleepInactiveTabs(now: Date = Date()) {
+        let settings = SettingsStore.shared
+        let policy = TabSleepPolicy(enabled: settings.tabSleepingEnabled, idleTimeout: settings.tabSleepTimeout)
+        let tabs = fetchContainers().flatMap(\.tabs)
+        let candidates = tabs.map { tab in
+            TabSleepCandidate(
+                id: tab.id,
+                lastAccessedAt: tab.lastAccessedAt,
+                isActive: tab.id == activeTab?.id || tab.maybeIsActive,
+                isPlayingMedia: tab.isPlayingMedia,
+                isCapturingMedia: tab.isCapturingMedia,
+                hasUnsavedFormInput: tab.hasUnsavedFormInput,
+                isWebViewReady: tab.isWebViewReady
+            )
+        }
+        let eligibleIDs = Set(policy.candidatesToSleep(candidates, now: now).map(\.id))
+        for tab in tabs where eligibleIDs.contains(tab.id) {
+            tab.sleep { [weak self] didSleep in
+                if didSleep { self?.logger.debug("Put tab \(tab.id.uuidString, privacy: .public) to sleep") }
             }
+        }
+    }
+
+    private func startMemoryPressureMonitoring() {
+        let source = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
+        source.setEventHandler { [weak self] in
+            self?.sleepForMemoryPressure()
+        }
+        source.resume()
+        memoryPressureSource = source
+    }
+
+    private func sleepForMemoryPressure() {
+        let tabs = fetchContainers().flatMap(\.tabs)
+        let candidates = tabs.map { tab in
+            TabSleepCandidate(
+                id: tab.id,
+                lastAccessedAt: tab.lastAccessedAt,
+                isActive: tab.id == activeTab?.id || tab.maybeIsActive,
+                isPlayingMedia: tab.isPlayingMedia,
+                isCapturingMedia: tab.isCapturingMedia,
+                hasUnsavedFormInput: tab.hasUnsavedFormInput,
+                isWebViewReady: tab.isWebViewReady
+            )
+        }
+        let policy = TabSleepPolicy(enabled: true, idleTimeout: 0)
+        for candidate in policy.candidatesToSleep(candidates, now: Date()) {
+            tabs.first(where: { $0.id == candidate.id })?.sleep { _ in }
         }
     }
 

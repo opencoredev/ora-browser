@@ -34,6 +34,12 @@ class Tab: ObservableObject, Identifiable {
 
     //    @Transient @Published var backgroundColor: Color = Color(.black)
     @Transient var isPlayingMedia: Bool = false
+    @Transient @Published var isSleeping: Bool = false
+    @Transient var isCapturingMedia: Bool = false
+    @Transient var hasUnsavedFormInput: Bool = false
+    @Transient var savedScrollPosition: Double = 0
+    @Transient var sleepingURL: URL?
+    @Transient var sleepingTitle: String?
     @Transient var isLoading: Bool = false
     @Transient @Published var backgroundColor: Color = .black
     @Transient var historyManager: HistoryManager?
@@ -223,6 +229,7 @@ class Tab: ObservableObject, Identifiable {
             delegate: nil
         )
         browserPage = page
+        isSleeping = false
 
         self.historyManager = historyManager
         self.downloadManager = downloadManager
@@ -232,9 +239,74 @@ class Tab: ObservableObject, Identifiable {
         self.syncBackgroundColorFromHex()
         // Load after a short delay to ensure layout
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-            let url = if self.type != .normal { self.savedURL } else { self.url }
+            let savedURL = if self.type != .normal { self.savedURL } else { self.url }
+            let url = self.sleepingURL ?? savedURL
             page.load(URLRequest(url: url ?? self.url))
             self.isWebViewReady = true
+            self.sleepingURL = nil
+            self.sleepingTitle = nil
+            if self.savedScrollPosition > 0 {
+                let scroll = self.savedScrollPosition
+                page.evaluateJavaScript("window.scrollTo(0, \(scroll));")
+                self.savedScrollPosition = 0
+            }
+        }
+    }
+
+    func sleep(completion: @escaping (Bool) -> Void) {
+        guard let page = browserPage, isWebViewReady else {
+            completion(false)
+            return
+        }
+
+        let stateScript = """
+        (() => {
+            const controls = Array.from(document.querySelectorAll('input, textarea, select'));
+            const dirty = controls.some((element) => {
+                if (element instanceof HTMLInputElement) {
+                    return element.value !== element.defaultValue || element.checked !== element.defaultChecked;
+                }
+                if (element instanceof HTMLTextAreaElement) return element.value !== element.defaultValue;
+                if (element instanceof HTMLSelectElement) {
+                    return Array.from(element.options).some((option) => option.selected !== option.defaultSelected);
+                }
+                return false;
+            }) || Array.from(document.querySelectorAll('[contenteditable="true"]')).some((element) => element.textContent);
+            return { scrollY: window.scrollY, dirty };
+        })();
+        """
+        page.evaluateJavaScript(stateScript) { [weak self, weak page] result, _ in
+            guard let self, let page else {
+                completion(false)
+                return
+            }
+            let state = result as? [String: Any]
+            let dirty = state?["dirty"] as? Bool ?? false
+            self.hasUnsavedFormInput = dirty
+            guard !dirty else {
+                completion(false)
+                return
+            }
+            self.savedScrollPosition = state?["scrollY"] as? Double ?? 0
+            if let currentURL = page.currentURL {
+                if self.isPrivate {
+                    self.sleepingURL = currentURL
+                } else {
+                    self.url = currentURL
+                    self.urlString = currentURL.absoluteString
+                }
+            }
+            if let title = page.title, !title.isEmpty {
+                if self.isPrivate { self.sleepingTitle = title } else { self.title = title }
+            }
+            page.teardown()
+            if self.browserPage === page {
+                self.browserPage = nil
+                self.pageDelegate = nil
+            }
+            self.isWebViewReady = false
+            self.isSleeping = true
+            completion(true)
         }
     }
 
@@ -297,6 +369,7 @@ class Tab: ObservableObject, Identifiable {
         browserPage = nil
         pageDelegate = nil
         isWebViewReady = false
+        isSleeping = false
     }
 
     func setNavigationError(_ error: Error, for url: URL?) {

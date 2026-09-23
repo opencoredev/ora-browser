@@ -38,6 +38,23 @@ struct GeneralSettingsView: View {
 
             SettingsCard(header: "Tab Management") {
                 VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Sleep inactive tabs", isOn: $settings.tabSleepingEnabled)
+
+                    HStack {
+                        Text("Sleep tabs after:")
+                        Spacer()
+                        Picker("", selection: $settings.tabSleepTimeout) {
+                            Text("15 minutes").tag(TimeInterval(15 * 60))
+                            Text("30 minutes").tag(TimeInterval(30 * 60))
+                            Text("1 hour").tag(TimeInterval(60 * 60))
+                            Text("2 hours").tag(TimeInterval(2 * 60 * 60))
+                            Text("6 hours").tag(TimeInterval(6 * 60 * 60))
+                            Text("Never").tag(TimeInterval(365 * 24 * 60 * 60))
+                        }
+                        .frame(width: 120)
+                        .disabled(!settings.tabSleepingEnabled)
+                    }
+
                     HStack {
                         Text("Suspend inactive tabs after:")
                         Spacer()

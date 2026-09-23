@@ -132,6 +132,9 @@ final class TabBrowserPageDelegate: BrowserPageDelegate {
         origin: URL?,
         decisionHandler: @escaping (BrowserPermissionDecision) -> Void
     ) {
+        if permission == .mediaCapture {
+            tab?.isCapturingMedia = true
+        }
         decisionHandler(.grant)
     }
 

@@ -141,7 +141,7 @@ struct TabItem: View {
             }
         }
         .padding(8)
-        .opacity(isDragging ? 0.0 : 1.0)
+        .opacity(isDragging ? 0.0 : (tab.isSleeping && !isSelected ? 0.65 : 1.0))
         .background(backgroundColor, in: .rect(cornerRadius: 10))
         .overlay(
             isDragging ?
@@ -174,7 +174,7 @@ struct TabItem: View {
     }
 
     private var tabTitle: some View {
-        Text(tab.title)
+        Text(tab.sleepingTitle ?? tab.title)
             .font(.system(size: 13))
             .foregroundColor(textColor)
             .lineLimit(1)
