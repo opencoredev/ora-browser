@@ -14,7 +14,8 @@ enum OraBrowserScripts {
                 source: navigationAndMediaScript,
                 injectionTime: .atDocumentEnd,
                 forMainFrameOnly: true
-            )
+            ),
+            FloatingVideoScript.userScript
         ]
 
         if let passwordManagerScript = loadResourceScript(named: "password-manager") {
@@ -266,30 +267,6 @@ enum OraBrowserScripts {
             },
             title() {
                 return document.title;
-            }
-        };
-
-        window.__oraTriggerPiP = function(isActive = false) {
-            const video = document.querySelector('video');
-
-            function hasAudio(target) {
-                if (!target) return false;
-                if (target.audioTracks && target.audioTracks.length > 0) return true;
-                if (!target.muted && target.volume > 0) return true;
-                return false;
-            }
-
-            if (
-                video &&
-                video.tagName === 'VIDEO' &&
-                !document.pictureInPictureElement &&
-                !video.paused &&
-                !isActive &&
-                hasAudio(video)
-            ) {
-                video.requestPictureInPicture().catch(() => {});
-            } else if (document.pictureInPictureElement) {
-                document.exitPictureInPicture().catch(() => {});
             }
         };
 

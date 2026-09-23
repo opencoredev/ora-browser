@@ -39,7 +39,11 @@ private struct ClosedTabSnapshot {
 // swiftlint:disable:next type_body_length
 class TabManager: ObservableObject {
     @Published var activeContainer: TabContainer?
-    @Published var activeTab: Tab?
+    @Published var activeTab: Tab? {
+        didSet { floatingVideo.activeTabDidChange(from: oldValue, to: activeTab) }
+    }
+
+    let floatingVideo = FloatingVideoController()
     let modelContainer: ModelContainer
     let modelContext: ModelContext
     let mediaController: MediaController
@@ -356,23 +360,25 @@ class TabManager: ObservableObject {
     }
 
     func closeTab(tab: Tab, shouldTrackForRestore: Bool = true) {
-        // If the closed tab was active, select another tab
-        if self.activeTab?.id == tab.id {
-            if let nextTab = tab.container.tabs
-                .filter({ $0.id != tab.id && $0.isWebViewReady })
-                .sorted(by: { $0.lastAccessedAt ?? Date.distantPast > $1.lastAccessedAt ?? Date.distantPast })
-                .first
-            {
-                self.activateTab(nextTab)
+        // If the closed tab was active, select another tab. A closing tab never floats its video.
+        floatingVideo.withoutAutomaticFloating {
+            if self.activeTab?.id == tab.id {
+                if let nextTab = tab.container.tabs
+                    .filter({ $0.id != tab.id && $0.isWebViewReady })
+                    .sorted(by: { $0.lastAccessedAt ?? Date.distantPast > $1.lastAccessedAt ?? Date.distantPast })
+                    .first
+                {
+                    self.activateTab(nextTab)
 
-                //            } else if let nextContainer = containers.first(where: { $0.id != tab.container.id }) {
-                //                self.activateContainer(nextContainer)
-                //
+                    //            } else if let nextContainer = containers.first(where: { $0.id != tab.container.id }) {
+                    //                self.activateContainer(nextContainer)
+                    //
+                } else {
+                    self.activeTab = nil
+                }
             } else {
-                self.activeTab = nil
+                self.activeTab = activeTab
             }
-        } else {
-            self.activeTab = activeTab
         }
         if activeTab?.isWebViewReady != nil, let historyManager = tab.historyManager,
            let downloadManager = tab.downloadManager, let tabManager = tab.tabManager
@@ -442,18 +448,7 @@ class TabManager: ObservableObject {
         try? modelContext.save()
     }
 
-    func togglePiP(_ currentTab: Tab?, _ oldTab: Tab?) {
-        if currentTab?.id != oldTab?.id, SettingsStore.shared.autoPiPEnabled {
-            currentTab?.evaluateJavaScript("window.__oraTriggerPiP(true)")
-            oldTab?.evaluateJavaScript("window.__oraTriggerPiP()")
-        }
-    }
-
     func activateTab(_ tab: Tab) {
-        // Toggle Picture-in-Picture on tab switch
-        togglePiP(tab, activeTab)
-
-        // Activate the tab
         activeTab?.maybeIsActive = false
         activeTab = tab
         activeTab?.maybeIsActive = true
@@ -662,7 +657,9 @@ private extension TabManager {
         guard isActiveContainer else { return }
 
         activeTab?.maybeIsActive = false
-        activeTab = nil
+        floatingVideo.withoutAutomaticFloating {
+            activeTab = nil
+        }
         activeContainer = nil
     }
 

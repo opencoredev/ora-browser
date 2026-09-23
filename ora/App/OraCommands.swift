@@ -141,6 +141,11 @@ struct OraCommands: Commands {
                 NotificationCenter.default.post(name: .togglePinTab, object: NSApp.keyWindow)
             }.keyboardShortcut(KeyboardShortcuts.Tabs.pin.keyboardShortcut)
 
+            Button("Pop Out Video") {
+                NotificationCenter.default.post(name: .toggleFloatingVideo, object: NSApp.keyWindow)
+            }
+            .keyboardShortcut(KeyboardShortcuts.Tabs.popOutVideo.keyboardShortcut)
+
             Divider()
 
             Button("Next Tab") {

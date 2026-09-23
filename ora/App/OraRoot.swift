@@ -231,6 +231,21 @@ struct OraRoot: View {
                         if let tab = tabManager.activeTab { tabManager.togglePinTab(tab) }
                     }
                 }
+                NotificationCenter.default.addObserver(
+                    forName: .toggleFloatingVideo,
+                    object: nil,
+                    queue: .main
+                ) { note in
+                    Task { @MainActor in
+                        guard note.object as? NSWindow === window ?? NSApp.keyWindow,
+                              let tab = tabManager.activeTab
+                        else { return }
+                        tabManager.floatingVideo.toggleFloatingVideo(in: tab) { [weak toastManager] result in
+                            guard result == .noVideo else { return }
+                            toastManager?.show("No video to pop out", type: .info, icon: .system("pip"))
+                        }
+                    }
+                }
                 NotificationCenter.default.addObserver(forName: .nextTab, object: nil, queue: .main) { note in
                     guard note.object as? NSWindow === window ?? NSApp.keyWindow else { return }
                     appState.isFloatingTabSwitchVisible = true

@@ -14,6 +14,7 @@ extension Notification.Name {
     static let goBack = Notification.Name("GoBack")
     static let goForward = Notification.Name("GoForward")
     static let togglePinTab = Notification.Name("TogglePinTab")
+    static let toggleFloatingVideo = Notification.Name("ToggleFloatingVideo")
     static let nextTab = Notification.Name("NextTab")
     static let previousTab = Notification.Name("PreviousTab")
     static let toggleToolbar = Notification.Name("ToggleToolbar")

@@ -53,6 +53,12 @@ enum KeyboardShortcuts {
             category: "Tabs",
             defaultChord: KeyChord(keyEquivalent: .init("d"), modifiers: [.command])
         )
+        static let popOutVideo = KeyboardShortcutDefinition(
+            id: "tabs.popOutVideo",
+            name: "Pop Out Video",
+            category: "Tabs",
+            defaultChord: KeyChord(keyEquivalent: .init("p"), modifiers: [.option, .command])
+        )
         static let tab1 = KeyboardShortcutDefinition(
             id: "tabs.tab1",
             name: "Tab 1",
@@ -312,7 +318,7 @@ enum KeyboardShortcuts {
     static let allShortcuts: [KeyboardShortcutDefinition] = [
         // Tabs
         Tabs.new, Tabs.close, Tabs.restore, Tabs.next, Tabs.previous,
-        Tabs.moveRight, Tabs.moveLeft, Tabs.pin,
+        Tabs.moveRight, Tabs.moveLeft, Tabs.pin, Tabs.popOutVideo,
         Tabs.tab1, Tabs.tab2, Tabs.tab3, Tabs.tab4, Tabs.tab5,
         Tabs.tab6, Tabs.tab7, Tabs.tab8, Tabs.tab9,
 

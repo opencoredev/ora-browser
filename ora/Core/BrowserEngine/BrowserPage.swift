@@ -62,7 +62,8 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
             let userScript = WKUserScript(
                 source: script.source,
                 injectionTime: mapInjectionTime(script.injectionTime),
-                forMainFrameOnly: script.forMainFrameOnly
+                forMainFrameOnly: script.forMainFrameOnly,
+                in: contentWorld(for: script.world)
             )
             contentController.addUserScript(userScript)
         }
@@ -155,6 +156,25 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
         webView.evaluateJavaScript(script, completionHandler: completion)
     }
 
+    /// Runs `functionBody` as an async function in the main frame and waits for any promise it returns.
+    /// WebKit treats calls from the app as user gestures, so gesture-gated APIs such as
+    /// `requestPictureInPicture()` work when they are called before the first `await`.
+    func callAsyncJavaScript(
+        _ functionBody: String,
+        arguments: [String: Any] = [:],
+        world: BrowserScriptWorld,
+        completion: ((Result<Any?, Error>) -> Void)? = nil
+    ) {
+        webView.callAsyncJavaScript(
+            functionBody,
+            arguments: arguments,
+            in: nil,
+            in: contentWorld(for: world)
+        ) { result in
+            completion?(result.map { value -> Any? in value })
+        }
+    }
+
     func takeSnapshot(
         configuration: BrowserSnapshotConfiguration,
         completion: @escaping (NSImage?, Error?) -> Void
@@ -222,6 +242,15 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
     private func handleCancelledNavigationError(_ error: Error) -> Bool {
         let nsError = error as NSError
         return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+    }
+
+    private func contentWorld(for world: BrowserScriptWorld) -> WKContentWorld {
+        switch world {
+        case .page:
+            .page
+        case .isolated:
+            .defaultClient
+        }
     }
 
     private func mapInjectionTime(_ injectionTime: BrowserUserScriptInjectionTime) -> WKUserScriptInjectionTime {

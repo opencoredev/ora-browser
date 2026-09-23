@@ -77,8 +77,14 @@ struct GeneralSettingsView: View {
                         .frame(width: 80)
                     }
                 }
+            }
 
-                Toggle("Auto Picture-in-Picture on tab switch", isOn: $settings.autoPiPEnabled)
+            SettingsCard(
+                header: "Floating Video",
+                description: "Keeps a playing video in a small window while you use other tabs. "
+                    + "Tabs > Pop Out Video does the same on demand."
+            ) {
+                Toggle("Pop out playing video when switching tabs", isOn: $settings.autoPiPEnabled)
             }
 
             SettingsCard(header: "Updates") {

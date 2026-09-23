@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ora Floating Video Fixture</title>
+  <style>
+    body { font: 16px -apple-system, sans-serif; margin: 48px; }
+    main { max-width: 640px; }
+    video { display: block; width: 480px; height: 270px; background: #000; }
+    button { margin: 16px 0; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Floating video fixture</h1>
+    <video id="clip" loop playsinline preload="auto"></video>
+    <button id="play" type="button">Play video</button>
+    <p id="playback">Video is paused</p>
+    <p id="mode">Video is inline</p>
+    <p id="count">Floated 0 times</p>
+  </main>
+  <script>
+    // The fixture server (python3 -m http.server) ignores Range requests, which WebKit needs
+    // to stream an mp4. Loading the file into a blob avoids that.
+    const video = document.getElementById('clip');
+    const playback = document.getElementById('playback');
+    const mode = document.getElementById('mode');
+    const count = document.getElementById('count');
+    let floats = 0;
+
+    fetch('floating-video.mp4')
+      .then((response) => response.blob())
+      .then((blob) => { video.src = URL.createObjectURL(blob); });
+
+    document.getElementById('play').addEventListener('click', () => {
+      video.play().catch((error) => { playback.textContent = 'Play failed: ' + error.name; });
+    });
+
+    video.addEventListener('playing', () => { playback.textContent = 'Video is playing'; });
+    video.addEventListener('pause', () => { playback.textContent = 'Video is paused'; });
+
+    function showMode(isFloating) {
+      const wasFloating = mode.textContent === 'Video is floating';
+      if (isFloating && !wasFloating) {
+        floats += 1;
+        count.textContent = 'Floated ' + floats + (floats === 1 ? ' time' : ' times');
+      }
+      mode.textContent = isFloating ? 'Video is floating' : 'Video is inline';
+    }
+
+    video.addEventListener('enterpictureinpicture', () => showMode(true));
+    video.addEventListener('leavepictureinpicture', () => showMode(false));
+    video.addEventListener('webkitpresentationmodechanged', () => {
+      showMode(video.webkitPresentationMode === 'picture-in-picture');
+    });
+  </script>
+</body>
+</html>
