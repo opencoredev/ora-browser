@@ -40,6 +40,7 @@ class Tab: ObservableObject, Identifiable {
     @Transient var savedScrollPosition: Double = 0
     @Transient var sleepingURL: URL?
     @Transient var sleepingTitle: String?
+    @Transient var suppressHistoryForRestore: Bool = false
     @Transient var isLoading: Bool = false
     @Transient @Published var backgroundColor: Color = .black
     @Transient var historyManager: HistoryManager?
@@ -188,6 +189,10 @@ class Tab: ObservableObject, Identifiable {
         delegate.mediaController = tabManager?.mediaController
         delegate.passwordCoordinator = passwordCoordinator
         page.delegate = delegate
+        page.mediaCaptureStateDidChange = { [weak self] isCapturing in
+            self?.isCapturingMedia = isCapturing
+        }
+        isCapturingMedia = page.isCapturingMedia
         pageDelegate = delegate
     }
 
@@ -216,6 +221,8 @@ class Tab: ObservableObject, Identifiable {
             passwordCoordinator = PasswordAutofillCoordinator(tab: self)
         }
 
+        let restoringSleep = isSleeping
+
         let engine = BrowserEngine.shared
         let profile = engine.makeProfile(identifier: container.id, isPrivate: isPrivate)
         let privacySettings = SettingsStore.shared.privacySettings(for: container.id)
@@ -240,16 +247,24 @@ class Tab: ObservableObject, Identifiable {
         // Load after a short delay to ensure layout
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
             let savedURL = if self.type != .normal { self.savedURL } else { self.url }
-            let url = self.sleepingURL ?? savedURL
-            page.load(URLRequest(url: url ?? self.url))
+            let url = TabSleepPolicy.wakeURL(
+                sleepingURL: self.sleepingURL,
+                savedURL: savedURL,
+                currentURL: self.url
+            )
+            self.suppressHistoryForRestore = restoringSleep
+            page.load(URLRequest(url: url))
             self.isWebViewReady = true
             self.sleepingURL = nil
             self.sleepingTitle = nil
-            if self.savedScrollPosition > 0 {
-                let scroll = self.savedScrollPosition
-                page.evaluateJavaScript("window.scrollTo(0, \(scroll));")
-                self.savedScrollPosition = 0
-            }
+        }
+    }
+
+    func restoreSavedScrollPosition(on page: BrowserPage) {
+        guard browserPage === page, savedScrollPosition > 0 else { return }
+        let scroll = savedScrollPosition
+        page.evaluateJavaScript("window.scrollTo(0, \(scroll));") { [weak self] _, _ in
+            self?.savedScrollPosition = 0
         }
     }
 
@@ -289,15 +304,15 @@ class Tab: ObservableObject, Identifiable {
             }
             self.savedScrollPosition = state?["scrollY"] as? Double ?? 0
             if let currentURL = page.currentURL {
-                if self.isPrivate {
-                    self.sleepingURL = currentURL
-                } else {
+                self.sleepingURL = currentURL
+                if !self.isPrivate {
                     self.url = currentURL
                     self.urlString = currentURL.absoluteString
                 }
             }
             if let title = page.title, !title.isEmpty {
-                if self.isPrivate { self.sleepingTitle = title } else { self.title = title }
+                self.sleepingTitle = title
+                if !self.isPrivate { self.title = title }
             }
             page.teardown()
             if self.browserPage === page {
@@ -370,6 +385,7 @@ class Tab: ObservableObject, Identifiable {
         pageDelegate = nil
         isWebViewReady = false
         isSleeping = false
+        isCapturingMedia = false
     }
 
     func setNavigationError(_ error: Error, for url: URL?) {

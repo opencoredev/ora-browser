@@ -38,28 +38,15 @@ struct GeneralSettingsView: View {
 
             SettingsCard(header: "Tab Management") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Sleep inactive tabs", isOn: $settings.tabSleepingEnabled)
+                    Toggle("Sleep inactive tabs", isOn: sleepingTabsBinding)
 
                     HStack {
                         Text("Sleep tabs after:")
                         Spacer()
-                        Picker("", selection: $settings.tabSleepTimeout) {
-                            Text("15 minutes").tag(TimeInterval(15 * 60))
+                        Picker("", selection: $settings.tabAliveTimeout) {
                             Text("30 minutes").tag(TimeInterval(30 * 60))
                             Text("1 hour").tag(TimeInterval(60 * 60))
                             Text("2 hours").tag(TimeInterval(2 * 60 * 60))
-                            Text("6 hours").tag(TimeInterval(6 * 60 * 60))
-                            Text("Never").tag(TimeInterval(365 * 24 * 60 * 60))
-                        }
-                        .frame(width: 120)
-                        .disabled(!settings.tabSleepingEnabled)
-                    }
-
-                    HStack {
-                        Text("Suspend inactive tabs after:")
-                        Spacer()
-                        Picker("", selection: $settings.tabAliveTimeout) {
-                            Text("1 hour").tag(TimeInterval(60 * 60))
                             Text("6 hours").tag(TimeInterval(6 * 60 * 60))
                             Text("12 hours").tag(TimeInterval(12 * 60 * 60))
                             Text("1 day").tag(TimeInterval(24 * 60 * 60))
@@ -67,6 +54,7 @@ struct GeneralSettingsView: View {
                             Text("Never").tag(TimeInterval(365 * 24 * 60 * 60))
                         }
                         .frame(width: 120)
+                        .disabled(!sleepingTabsBinding.wrappedValue)
                     }
 
                     HStack {
@@ -141,4 +129,13 @@ struct GeneralSettingsView: View {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
         return "v\(version) (\(build))"
     }
+
+    private var sleepingTabsBinding: Binding<Bool> {
+        Binding(
+            get: { settings.tabAliveTimeout < Self.neverTimeout },
+            set: { settings.tabAliveTimeout = $0 ? 30 * 60 : Self.neverTimeout }
+        )
+    }
+
+    private static let neverTimeout = TimeInterval(365 * 24 * 60 * 60)
 }

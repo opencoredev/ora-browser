@@ -153,8 +153,6 @@ class SettingsStore: ObservableObject {
     private let globalDefaultSearchEngineKey = "settings.globalDefaultSearchEngine"
     private let customKeyboardShortcutsKey = "settings.customKeyboardShortcuts"
     private let tabAliveTimeoutKey = "settings.tabAliveTimeout"
-    private let tabSleepingEnabledKey = "settings.tabSleepingEnabled"
-    private let tabSleepTimeoutKey = "settings.tabSleepTimeout"
     private let tabRemovalTimeoutKey = "settings.tabRemovalTimeout"
     private let maxRecentTabsKey = "settings.maxRecentTabs"
     private let autoPiPEnabledKey = "settings.autoPiPEnabled"
@@ -227,14 +225,6 @@ class SettingsStore: ObservableObject {
         didSet { defaults.set(tabAliveTimeout, forKey: tabAliveTimeoutKey) }
     }
 
-    @Published var tabSleepingEnabled: Bool {
-        didSet { defaults.set(tabSleepingEnabled, forKey: tabSleepingEnabledKey) }
-    }
-
-    @Published var tabSleepTimeout: TimeInterval {
-        didSet { defaults.set(tabSleepTimeout, forKey: tabSleepTimeoutKey) }
-    }
-
     @Published var tabRemovalTimeout: TimeInterval {
         didSet { defaults.set(tabRemovalTimeout, forKey: tabRemovalTimeoutKey) }
     }
@@ -304,6 +294,7 @@ class SettingsStore: ObservableObject {
 
         let aliveTimeoutValue = defaults.double(forKey: tabAliveTimeoutKey)
         let supportedTimeouts: [TimeInterval] = [
+            30 * 60,           // 30 minutes
             60 * 60,           // 1 hour
             6 * 60 * 60,       // 6 hours
             12 * 60 * 60,      // 12 hours
@@ -313,29 +304,11 @@ class SettingsStore: ObservableObject {
         ]
         let normalizedAlive = Self.normalizeTimeout(
             aliveTimeoutValue,
-            defaultSeconds: 60 * 60,
+            defaultSeconds: 30 * 60,
             supported: supportedTimeouts
         )
         defaults.set(normalizedAlive, forKey: tabAliveTimeoutKey)
         tabAliveTimeout = normalizedAlive
-
-        tabSleepingEnabled = defaults.object(forKey: tabSleepingEnabledKey) as? Bool ?? true
-        let sleepTimeoutValue = defaults.double(forKey: tabSleepTimeoutKey)
-        let supportedSleepTimeouts: [TimeInterval] = [
-            15 * 60,
-            30 * 60,
-            60 * 60,
-            2 * 60 * 60,
-            6 * 60 * 60,
-            365 * 24 * 60 * 60
-        ]
-        let normalizedSleepTimeout = Self.normalizeTimeout(
-            sleepTimeoutValue,
-            defaultSeconds: 30 * 60,
-            supported: supportedSleepTimeouts
-        )
-        defaults.set(normalizedSleepTimeout, forKey: tabSleepTimeoutKey)
-        tabSleepTimeout = normalizedSleepTimeout
 
         let removalTimeoutValue = defaults.double(forKey: tabRemovalTimeoutKey)
         let normalizedRemoval = Self.normalizeTimeout(

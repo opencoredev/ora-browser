@@ -44,4 +44,14 @@ struct TabSleepPolicy {
     func idleDeadline(for lastAccessedAt: Date) -> Date {
         lastAccessedAt.addingTimeInterval(idleTimeout)
     }
+
+    static func wakeURL(sleepingURL: URL?, savedURL: URL?, currentURL: URL) -> URL {
+        sleepingURL ?? savedURL ?? currentURL
+    }
+}
+
+enum TabHistoryPolicy {
+    static func shouldRecordHistory(isRestoringNavigation: Bool) -> Bool {
+        !isRestoringNavigation
+    }
 }

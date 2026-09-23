@@ -4,6 +4,7 @@ import Foundation
 
 final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     weak var delegate: BrowserPageDelegate?
+    var mediaCaptureStateDidChange: ((Bool) -> Void)?
 
     private let webView: WKWebView
     private let messageNames: [String]
@@ -14,6 +15,8 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
     private var isReadyForNavigation = false
     private var pendingLoadRequest: URLRequest?
     private var pendingReload = false
+    private var cameraCaptureObservation: NSKeyValueObservation?
+    private var microphoneCaptureObservation: NSKeyValueObservation?
 
     init(
         profile: BrowserEngineProfile,
@@ -78,6 +81,13 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
             layer.drawsAsynchronously = true
         }
 
+        cameraCaptureObservation = webView.observe(\WKWebView.cameraCaptureState, options: [.initial, .new]) {
+            [weak self] _, _ in self?.notifyMediaCaptureStateChanged()
+        }
+        microphoneCaptureObservation = webView.observe(\WKWebView.microphoneCaptureState, options: [.initial, .new]) {
+            [weak self] _, _ in self?.notifyMediaCaptureStateChanged()
+        }
+
         BrowserPrivacyService.shared.prepareConfiguration(
             webConfiguration,
             spaceID: profile.identifier
@@ -117,6 +127,10 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
 
     var estimatedProgress: Double {
         webView.estimatedProgress
+    }
+
+    var isCapturingMedia: Bool {
+        webView.cameraCaptureState != .none || webView.microphoneCaptureState != .none
     }
 
     func load(_ request: URLRequest) {
@@ -172,6 +186,12 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
     }
 
     func teardown() {
+        cameraCaptureObservation?.invalidate()
+        microphoneCaptureObservation?.invalidate()
+        cameraCaptureObservation = nil
+        microphoneCaptureObservation = nil
+        mediaCaptureStateDidChange?(false)
+        mediaCaptureStateDidChange = nil
         webView.stopLoading()
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
@@ -181,6 +201,10 @@ final class BrowserPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptM
             controller.removeScriptMessageHandler(forName: messageName)
         }
         webView.removeFromSuperview()
+    }
+
+    private func notifyMediaCaptureStateChanged() {
+        mediaCaptureStateDidChange?(isCapturingMedia)
     }
 
     func bypassSSL(for host: String) {

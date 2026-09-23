@@ -496,7 +496,10 @@ class TabManager: ObservableObject {
 
     func sleepInactiveTabs(now: Date = Date()) {
         let settings = SettingsStore.shared
-        let policy = TabSleepPolicy(enabled: settings.tabSleepingEnabled, idleTimeout: settings.tabSleepTimeout)
+        let policy = TabSleepPolicy(
+            enabled: settings.tabAliveTimeout < 365 * 24 * 60 * 60,
+            idleTimeout: settings.tabAliveTimeout
+        )
         let tabs = fetchContainers().flatMap(\.tabs)
         let candidates = tabs.map { tab in
             TabSleepCandidate(
@@ -596,10 +599,6 @@ class TabManager: ObservableObject {
                 self?.autoClearContainerTabs()
             }
         }
-    }
-
-    deinit {
-        cleanupTimer?.invalidate()
     }
 
     /// Activate a tab by its persistent id. If the tab is in a

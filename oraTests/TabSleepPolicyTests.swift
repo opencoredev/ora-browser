@@ -58,4 +58,18 @@ struct TabSleepPolicyTests {
         #expect(policy.isIdle(candidate(age: timeout), now: now))
         #expect(!TabSleepPolicy(enabled: false, idleTimeout: timeout).isIdle(candidate(), now: now))
     }
+
+    @Test func wakeUsesCapturedURLBeforeSavedURL() throws {
+        let captured = try #require(URL(string: "https://example.com/current"))
+        let saved = try #require(URL(string: "https://example.com/pinned"))
+        let original = try #require(URL(string: "https://example.com/original"))
+
+        #expect(TabSleepPolicy.wakeURL(sleepingURL: captured, savedURL: saved, currentURL: original) == captured)
+        #expect(TabSleepPolicy.wakeURL(sleepingURL: nil, savedURL: saved, currentURL: original) == saved)
+    }
+
+    @Test func restoreNavigationSuppressesHistoryOnlyWhileRestoring() {
+        #expect(TabHistoryPolicy.shouldRecordHistory(isRestoringNavigation: true) == false)
+        #expect(TabHistoryPolicy.shouldRecordHistory(isRestoringNavigation: false))
+    }
 }

@@ -90,9 +90,13 @@ final class TabBrowserPageDelegate: BrowserPageDelegate {
                 if tab.favicon == nil {
                     tab.setFavicon()
                 }
-                tab.updateHistory()
+                if TabHistoryPolicy.shouldRecordHistory(isRestoringNavigation: tab.suppressHistoryForRestore) {
+                    tab.updateHistory()
+                }
                 tab.updateHeaderColor()
             }
+            tab.restoreSavedScrollPosition(on: page)
+            tab.suppressHistoryForRestore = false
 
             let workItem = DispatchWorkItem { [weak tab] in
                 tab?.loadingProgress = 0
@@ -103,6 +107,7 @@ final class TabBrowserPageDelegate: BrowserPageDelegate {
     }
 
     func browserPage(_ page: BrowserPage, didFailNavigationWith error: Error, failingURL: URL?) {
+        tab?.suppressHistoryForRestore = false
         tab?.setNavigationError(error, for: failingURL)
     }
 
@@ -132,9 +137,6 @@ final class TabBrowserPageDelegate: BrowserPageDelegate {
         origin: URL?,
         decisionHandler: @escaping (BrowserPermissionDecision) -> Void
     ) {
-        if permission == .mediaCapture {
-            tab?.isCapturingMedia = true
-        }
         decisionHandler(.grant)
     }
 
@@ -241,7 +243,9 @@ final class TabBrowserPageDelegate: BrowserPageDelegate {
         tab.title = update.title
         tab.url = URL(string: update.href) ?? tab.url
         tab.setFavicon()
-        tab.updateHistory()
+        if TabHistoryPolicy.shouldRecordHistory(isRestoringNavigation: tab.suppressHistoryForRestore) {
+            tab.updateHistory()
+        }
 
         if oldTitle != update.title, !update.title.isEmpty {
             MainActor.assumeIsolated {
