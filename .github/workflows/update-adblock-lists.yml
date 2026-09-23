@@ -1,0 +1,21 @@
+name: Update adblock lists
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: vars.ORA_ENABLE_ADBLOCK_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.x'}
+      - run: python3 scripts/generate-adblock-lists.py --output dist/adblock
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: adblock-latest
+          prerelease: true
+          files: dist/adblock/*

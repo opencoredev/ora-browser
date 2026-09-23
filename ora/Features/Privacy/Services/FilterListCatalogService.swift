@@ -8,6 +8,10 @@ struct FilterListCatalogService {
     static let adGuardTrackingProtectionID = "adguard-tracking-protection"
     static let adGuardURLTrackingID = "adguard-url-tracking"
     static let adGuardAnnoyancesID = "adguard-annoyances"
+    static let uAssetsID = "ubo-assets"
+    static let easyListID = "easylist"
+    static let easyPrivacyID = "easyprivacy"
+    static let peterLoweID = "peter-lowe"
 
     static let defaultBuiltinSelectionIDs = [
         adGuardBaseID,
@@ -64,7 +68,19 @@ struct FilterListCatalogService {
             isRecommended: false,
             enabledByDefault: false,
             status: .idle
-        )
+        ),
+        FilterListRecord(
+            id: FilterListCatalogService.uAssetsID, name: "uBlock Origin uAssets", summary: "Automatically generated WebKit rules from uAssets filters.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: true, enabledByDefault: false, status: .idle
+        ),
+        FilterListRecord(
+            id: FilterListCatalogService.easyListID, name: "EasyList", summary: "Automatically generated WebKit rules from EasyList.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: true, enabledByDefault: false, status: .idle
+        ),
+        FilterListRecord(
+            id: FilterListCatalogService.easyPrivacyID, name: "EasyPrivacy", summary: "Automatically generated WebKit rules from EasyPrivacy.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: false, enabledByDefault: false, status: .idle
+        ),
+        FilterListRecord(
+            id: FilterListCatalogService.peterLoweID, name: "Peter Lowe's Ad and Tracking Server List", summary: "Automatically generated WebKit rules from Peter Lowe's list.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: false, enabledByDefault: false, status: .idle
+        ),
     ]
 
     func normalizedRecords(from stored: [FilterListRecord]) -> [FilterListRecord] {
