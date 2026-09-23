@@ -476,22 +476,13 @@ struct OraTests {
 }
 
 extension OraTests {
-    @Test func parsesAndDiffsRemoteFilterManifest() throws {
-        let json = """
-        {"schemaVersion":1,"generatedAt":"2026-01-01T00:00:00Z","converter":"test","lists":[{"id":"easylist","sourceURL":"https://example.com/easylist","sourceVersion":"v1","droppedRuleCount":2,"shards":[{"path":"easylist-0.json","sha256":"abc","ruleCount":3}]}]}
-        """
-        let first = try JSONDecoder().decode(RemoteFilterManifest.self, from: Data(json.utf8))
-        var changed = first
-        changed = RemoteFilterManifest(schemaVersion: 1, generatedAt: first.generatedAt, converter: first.converter, lists: [
-            .init(id: "easylist", sourceURL: "https://example.com/easylist", sourceVersion: "v2", droppedRuleCount: 2, shards: [.init(path: "easylist-0.json", sha256: "def", ruleCount: 4)])
-        ])
-        #expect(first.changedListIDs(comparedWith: first).isEmpty)
-        #expect(first.changedListIDs(comparedWith: changed) == ["easylist"])
-    }
-
-    @Test func verifiesRemoteFilterChecksum() {
-        let data = Data("hello".utf8)
-        #expect(RemoteFilterManifestService.verify(data: data, sha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"))
-        #expect(!RemoteFilterManifestService.verify(data: data, sha256: String(repeating: "0", count: 64)))
+    @Test func catalogsMaintainedRemoteFilterLists() throws {
+        let records = FilterListCatalogService.shared.builtinRecords
+        let byID = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
+        #expect(byID[FilterListCatalogService.uAssetsID]?.sourceURL.contains("uBlockOrigin/uAssets") == true)
+        #expect(byID[FilterListCatalogService.easyListID]?.sourceURL == "https://easylist.to/easylist/easylist.txt")
+        #expect(byID[FilterListCatalogService.easyPrivacyID]?.sourceURL == "https://easylist.to/easylist/easyprivacy.txt")
+        #expect(byID[FilterListCatalogService.peterLoweID]?.sourceURL.contains("pgl.yoyo.org") == true)
+        #expect(records.filter { $0.isRecommended }.count >= 4)
     }
 }

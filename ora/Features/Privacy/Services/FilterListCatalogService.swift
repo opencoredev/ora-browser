@@ -70,16 +70,16 @@ struct FilterListCatalogService {
             status: .idle
         ),
         FilterListRecord(
-            id: FilterListCatalogService.uAssetsID, name: "uBlock Origin uAssets", summary: "Automatically generated WebKit rules from uAssets filters.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: true, enabledByDefault: false, status: .idle
+            id: FilterListCatalogService.uAssetsID, name: "uBlock Origin uAssets", summary: "Core uBlock Origin network and cosmetic filters, converted on device.", sourceKind: .builtin, sourceURL: "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt", isRecommended: true, enabledByDefault: false, status: .idle
         ),
         FilterListRecord(
-            id: FilterListCatalogService.easyListID, name: "EasyList", summary: "Automatically generated WebKit rules from EasyList.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: true, enabledByDefault: false, status: .idle
+            id: FilterListCatalogService.easyListID, name: "EasyList", summary: "The maintained EasyList ad blocking filter.", sourceKind: .builtin, sourceURL: "https://easylist.to/easylist/easylist.txt", isRecommended: true, enabledByDefault: false, status: .idle
         ),
         FilterListRecord(
-            id: FilterListCatalogService.easyPrivacyID, name: "EasyPrivacy", summary: "Automatically generated WebKit rules from EasyPrivacy.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: false, enabledByDefault: false, status: .idle
+            id: FilterListCatalogService.easyPrivacyID, name: "EasyPrivacy", summary: "The maintained EasyPrivacy tracking protection filter.", sourceKind: .builtin, sourceURL: "https://easylist.to/easylist/easyprivacy.txt", isRecommended: false, enabledByDefault: false, status: .idle
         ),
         FilterListRecord(
-            id: FilterListCatalogService.peterLoweID, name: "Peter Lowe's Ad and Tracking Server List", summary: "Automatically generated WebKit rules from Peter Lowe's list.", sourceKind: .builtin, sourceURL: RemoteFilterManifestService.defaultManifestURL.absoluteString, isRecommended: false, enabledByDefault: false, status: .idle
+            id: FilterListCatalogService.peterLoweID, name: "Peter Lowe's Ad and Tracking Server List", summary: "Peter Lowe's maintained ad and tracking server list.", sourceKind: .builtin, sourceURL: "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblock&showintro=0&mimetype=plaintext", isRecommended: false, enabledByDefault: false, status: .idle
         ),
     ]
 

@@ -14,7 +14,6 @@ actor AdBlockService {
     private let updateService: FilterListUpdateService
     private let compileService: ContentBlockerCompileService
     private let artifactStore: ContentBlockerArtifactStore
-    private let remoteManifestService: RemoteFilterManifestService
     private var knownContainerIDs: Set<UUID> = []
     private var schedulerTask: Task<Void, Never>?
 
@@ -22,14 +21,12 @@ actor AdBlockService {
         catalogService: FilterListCatalogService = .shared,
         updateService: FilterListUpdateService = FilterListUpdateService(),
         compileService: ContentBlockerCompileService = ContentBlockerCompileService(),
-        artifactStore: ContentBlockerArtifactStore = .shared,
-        remoteManifestService: RemoteFilterManifestService = RemoteFilterManifestService()
+        artifactStore: ContentBlockerArtifactStore = .shared
     ) {
         self.catalogService = catalogService
         self.updateService = updateService
         self.compileService = compileService
         self.artifactStore = artifactStore
-        self.remoteManifestService = remoteManifestService
     }
 
     func start(containerIDs: [UUID]) async {
@@ -37,30 +34,11 @@ actor AdBlockService {
         await MainActor.run {
             SettingsStore.shared.setAdBlockFilterLists(SettingsStore.shared.adBlockFilterLists)
         }
-        await syncRemoteLists()
-
         for containerID in knownContainerIDs where await shouldRefreshOnLaunch(containerId: containerID) {
             _ = await refreshSpace(containerId: containerID, reason: .startup)
         }
 
         scheduleBackgroundRefresh()
-    }
-
-    private func syncRemoteLists() async {
-        guard let manifest = try? await remoteManifestService.fetchManifest() else { return }
-        let ids = await MainActor.run { Set(SettingsStore.shared.adBlockFilterLists.filter { $0.id == FilterListCatalogService.uAssetsID || $0.id == FilterListCatalogService.easyListID || $0.id == FilterListCatalogService.easyPrivacyID || $0.id == FilterListCatalogService.peterLoweID }.map(\.id)) }
-        guard let changed = try? await remoteManifestService.sync(manifest, listIDs: ids, artifactStore: artifactStore), !changed.isEmpty else { return }
-        await MainActor.run {
-            for id in changed {
-                guard var record = SettingsStore.shared.adBlockFilterList(id: id), let list = manifest.lists.first(where: { $0.id == id }) else { continue }
-                let digest = list.shards.map(\.sha256).joined()
-                record.activeRevision = String(digest.prefix(16))
-                record.status = .ready
-                record.lastSuccessfulRefreshAt = Date()
-                record.coverage = FilterListCoverage(totalRuleCount: list.shards.reduce(0) { $0 + $1.ruleCount }, convertedRuleCount: list.shards.reduce(0) { $0 + $1.ruleCount }, skippedRuleCount: list.droppedRuleCount, safariRuleCount: list.shards.reduce(0) { $0 + $1.ruleCount }, shardCount: list.shards.count)
-                SettingsStore.shared.upsertAdBlockFilterList(record)
-            }
-        }
     }
 
     func registerSpace(containerId: UUID) {

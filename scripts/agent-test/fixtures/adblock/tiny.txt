@@ -1,4 +1,0 @@
-! comment
-||ads.example.com^
-example.com##.sponsor
-@@||allowed.example^
