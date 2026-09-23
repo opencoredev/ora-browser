@@ -39,7 +39,7 @@ Run `scripts/agent-test/run.sh` directly only on a disposable macOS machine. It 
 
 ## What a run does
 
-`run.sh` generates the project with XcodeGen and runs `build-for-testing` without signing, for the schemes the stage needs (`ora` for unit, `ora-ui` for UI, both for `build` and `all`). It then ad-hoc signs `Ora.app` with the real sandbox entitlements plus `get-task-allow`, which XCTest needs, minus the two `com.apple.developer.web-browser*` keys that need Ora's provisioning profile. Next it runs unit tests (`oraTests`) and serves `scripts/agent-test/fixtures/` on `http://127.0.0.1:8765/`. Last, it runs UI tests (`oraUITests`) and exports their screenshot attachments.
+`run.sh` generates the project with XcodeGen and runs `build-for-testing` without signing, for the schemes the stage needs (`ora` for unit, `ora-ui` for UI, both for `build` and `all`). It ad-hoc signs `Ora.app` with `get-task-allow`, which XCTest needs. Unit tests (`oraTests`) run in a build signed without the sandbox, because XCTest can't connect to an ad-hoc signed sandboxed host. Before UI tests it re-signs with the real sandbox entitlements, minus the two `com.apple.developer.web-browser*` keys that need Ora's provisioning profile. It then serves `scripts/agent-test/fixtures/` on `http://127.0.0.1:8765/`. Last, it runs UI tests (`oraUITests`) and exports their screenshot attachments.
 
 Because of that signing, runner builds cannot test passkeys, default-browser registration, iCloud Keychain, or Sparkle updates. Say so when a change touches them. The VM starts empty, so every run is a first launch with no Spaces, history, or saved state.
 
@@ -58,7 +58,7 @@ Everything lands in `build/agent-test/runs/<run-id>/`, which is gitignored:
 | `ui-attachments-export.log` | Why screenshots are missing when the "UI screenshot export" step fails |
 | `ora-unified.log` | Ora's `Logger` output (subsystem `com.orabrowser.ora`) |
 | `crashes/` | Ora crash reports from the run, if any |
-| `entitlements.txt` | Entitlements the tested app was signed with |
+| `entitlements-sandbox-0.txt`, `entitlements-sandbox-1.txt` | Entitlements the app had for unit tests and for UI tests |
 | `*.xcresult.zip` | Full result bundles for Xcode on a Mac |
 
 Confirm `environment.txt` shows the commit you pushed before trusting a result.
@@ -86,7 +86,8 @@ For layout changes, capture both appearances. `OraUITestsLaunchTests` already ru
 - **Run never starts**: `gh run view <id>` shows it queued. Check the Tenki app installation and the `--runner` label.
 - **`remote.sh` says the workflow is not found**: `agent-test.yml` is missing from the default branch.
 - **Build fails on signing or provisioning**: the build must pass `CODE_SIGNING_ALLOWED=NO`. Check the `xcodebuild` line in `build-ora.log`.
-- **Ora exits at launch with a code signature error**: read `entitlements.txt`. A restricted `com.apple.developer.*` key may have been added to `project.yml` and needs to be stripped in `run.sh`. Setting `ORA_AGENT_SANDBOX=0` in the workflow environment isolates sandbox problems.
+- **Ora exits at launch with a code signature error**: read `entitlements-sandbox-1.txt`. A restricted `com.apple.developer.*` key may have been added to `project.yml` and needs to be stripped in `run.sh`. Dispatching with `gh workflow run agent-test.yml --ref <branch> -f sandbox=0` runs UI tests without the sandbox to isolate sandbox problems.
 - **UI tests time out before the first action**: UI automation was not enabled. Look for `automationmodetool` in the job log.
 - **Screenshots are blank or missing**: if the "UI screenshot export" step failed, read `ui-attachments-export.log`. Otherwise check `ui-tests.json` to see whether the test reached its attachment step, then read `ui-tests.log`.
 - **Fixture test is skipped**: `ORA_FIXTURE_BASE_URL` was not passed through. Check `fixture-server.log` and the `TEST_RUNNER_` export in `run.sh`.
+- **UI tests fail and screenshots show a lock screen or screen saver**: Tenki's macOS 15 and 26 images auto-log in `runner` with `autoLoginUserScreenLocked = 1`, so the GUI session is locked from boot. Synthetic keystrokes, System Events, and `screencapture` on macOS 26 all fail against it, even with the correct password. There is no in-job workaround yet. Report UI tests as blocked and rely on build and unit evidence.

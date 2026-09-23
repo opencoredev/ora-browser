@@ -117,7 +117,9 @@ build() {
 }
 
 sign() {
-    echo "==> Ad-hoc signing test products"
+    # sign [sandbox]: 1 signs with the app sandbox, 0 without. Defaults to ORA_AGENT_SANDBOX.
+    local sandbox="${1:-$SANDBOX}"
+    echo "==> Ad-hoc signing test products (sandbox: $sandbox)"
     [[ -d "$APP" ]] || {
         echo "error: $APP was not built" >&2
         return 1
@@ -126,7 +128,7 @@ sign() {
     # Sign nested code (Sparkle, test bundles) without entitlements first, then the app itself.
     codesign --force --deep --sign - "$APP" || return 1
     local entitlements="$OUT/ora-agent.entitlements"
-    if [[ "$SANDBOX" == "1" ]]; then
+    if [[ "$sandbox" == "1" ]]; then
         # Keep the real sandbox, but drop the entitlements that require Ora's provisioning profile.
         cp ora/Info/ora.entitlements "$entitlements"
         /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.web-browser" "$entitlements" 2>/dev/null
@@ -138,7 +140,7 @@ sign() {
     # Xcode adds this to Debug builds. XCTest needs it to inject oraTests into the host app.
     /usr/libexec/PlistBuddy -c "Add :com.apple.security.get-task-allow bool true" "$entitlements" 2>/dev/null
     codesign --force --sign - --entitlements "$entitlements" "$APP" || return 1
-    codesign --display --entitlements - "$APP" >"$EVIDENCE/entitlements.txt" 2>&1
+    codesign --display --entitlements - "$APP" >"$EVIDENCE/entitlements-sandbox-$sandbox.txt" 2>&1
 
     local runner
     for runner in "$PRODUCTS"/*-Runner.app; do
@@ -200,6 +202,9 @@ PY
 }
 
 run_unit() {
+    # oraTests is injected into Ora. An ad-hoc signed sandboxed host cannot reach testmanagerd
+    # ("Failed to establish connection to the IDE"), so unit tests run in an unsandboxed build.
+    sign 0 || return 1
     echo "==> Running unit tests"
     xcode unit-tests test-without-building -scheme ora -resultBundlePath "$EVIDENCE/unit.xcresult"
     local status=$?
@@ -208,6 +213,7 @@ run_unit() {
 }
 
 run_ui() {
+    sign || return 1
     start_fixture_server || return 1
     # Shows whether the GUI session was locked before the tests started.
     mkdir -p "$EVIDENCE/screenshots"
