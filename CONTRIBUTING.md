@@ -56,6 +56,7 @@ swiftformat . --quiet
 swiftlint lint --fix
 ./scripts/xcbuild-debug.sh
 xcodebuild test -scheme ora -destination "platform=macOS"
+xcodebuild test -scheme ora-ui -destination "platform=macOS"   # UI tests
 ```
 
 You can also run tests in Xcode with `Product > Test`.

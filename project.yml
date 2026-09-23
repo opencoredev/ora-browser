@@ -160,6 +160,18 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Ora.app/Contents/MacOS/Ora"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  oraUITests:
+    type: bundle.ui-testing
+    platform: "macOS"
+    deploymentTarget: "15.0"
+    sources:
+      - path: oraUITests
+    dependencies:
+      - target: ora
+    settings:
+      base:
+        TEST_TARGET_NAME: ora
+
 schemes:
   ora:
     shared: true
@@ -178,3 +190,14 @@ schemes:
       config: Debug
     archive:
       config: Release
+  # UI tests live in their own scheme so `xcodebuild test -scheme ora` stays fast.
+  ora-ui:
+    shared: true
+    build:
+      targets:
+        ora: all
+        oraUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - oraUITests

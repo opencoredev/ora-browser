@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Ora on macOS"
+  short_description: "Build, test, and screenshot Ora on a disposable macOS runner"
+  default_prompt: "Use $test-ora-macos to build, test, and screenshot this change on a macOS runner."

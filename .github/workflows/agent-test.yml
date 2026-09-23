@@ -1,0 +1,60 @@
+name: Agent Test (macOS)
+
+# Manual only. Agents dispatch this through scripts/agent-test/remote.sh to build Ora,
+# run unit and UI tests, and collect screenshots on a disposable macOS runner.
+# It is separate from the push and pull request checks in build-and-test.yml.
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: What to run
+        type: choice
+        options: [all, build, unit, ui]
+        default: all
+      ui_only_testing:
+        description: Optional -only-testing filter, e.g. oraUITests/OraSmokeUITests
+        type: string
+        default: ""
+      runner:
+        description: macOS runner label
+        type: string
+        default: tenki-macos-26-medium
+
+concurrency:
+  group: agent-test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  agent-test:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          for tool in xcodegen xcbeautify; do
+            command -v "$tool" >/dev/null || brew install "$tool"
+          done
+
+      - name: Allow UI automation without a password prompt
+        run: sudo automationmodetool enable-automationmode-without-authentication || true
+
+      - name: Build and test
+        env:
+          ORA_AGENT_STAGE: ${{ inputs.stage }}
+          ORA_AGENT_UI_ONLY_TESTING: ${{ inputs.ui_only_testing }}
+        run: ./scripts/agent-test/run.sh
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-test-evidence
+          path: build/agent-test/evidence
+          if-no-files-found: warn
+          retention-days: 14
